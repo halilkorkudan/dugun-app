@@ -1,146 +1,269 @@
-import React, { useState } from 'react';
-import { Camera, Upload, Heart, User, X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import React, { useState } from "react";
+import {
+    Camera,
+    Upload,
+    Heart,
+    User,
+    X,
+    CheckCircle,
+    AlertCircle,
+    Info,
+} from "lucide-react";
+
+// Basit konfeti komponenti
+const Confetti = ({ show }) => {
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+            {[...Array(100)].map((_, i) => (
+                <div
+                    key={i}
+                    className={`absolute w-2 h-2 rounded-full bg-rose-500 animate-fall`}
+                    style={{
+                        left: `${Math.random() * 100}%`,
+                        animationDelay: `${Math.random() * 2}s`,
+                        backgroundColor: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    }}
+                />
+            ))}
+            <style jsx>{`
+        @keyframes fall {
+          0% {
+            transform: translateY(-10px) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        .animate-fall {
+          animation: fall 3s linear forwards;
+        }
+      `}</style>
+        </div>
+    );
+};
 
 const WeddingPhotoApp = () => {
-    const [userName, setUserName] = useState('');
+    const [userName, setUserName] = useState("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [uploadedPhotos, setUploadedPhotos] = useState([]);
+    const [selectedFiles, setSelectedFiles] = useState([]); // Seçilen dosyalar
     const [showConfetti, setShowConfetti] = useState(false);
     const [uploading, setUploading] = useState(false);
 
     // Desteklenen formatlar ve boyut limitleri
-    const supportedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/bmp', 'image/heic', 'image/mp4'];
-    const maxFileSize = 10 * 1024 * 1024; // 10MB
-    const maxFiles = 100; // Tek seferde maksimum dosya sayısı
+    const supportedFormats = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "image/tiff",
+        "image/bmp",
+        "image/heic",
+        "image/heif",
+        "video/mp4",
+        "video/quicktime",
+    ];
+    const maxImageFileSize = 1 * 1024 * 1024 * 1024; // 1GB
+    const maxVideoFileSize = 1 * 1024 * 1024 * 1024; // 1GB
+    const maxFiles = 100; // Maks dosya
 
-    // Toast mesaj sistemi (basit)
+    // Toast sistemi
     const [toasts, setToasts] = useState([]);
-
-    const showToast = (message, type = 'success') => {
+    const showToast = (message, type = "success") => {
         const id = Date.now();
         const toast = { id, message, type };
-        setToasts(prev => [...prev, toast]);
+        setToasts((prev) => [...prev, toast]);
         setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
+            setToasts((prev) => prev.filter((t) => t.id !== id));
         }, 4000);
     };
 
     const handleLogin = () => {
         if (userName.trim()) setIsLoggedIn(true);
     };
-
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter') handleLogin();
+        if (e.key === "Enter") handleLogin();
     };
 
     // Dosya validasyonu
     const validateFile = (file) => {
         const errors = [];
+        const mimeType = file.type || getMimeFromExtension(file.name);
 
-        // Format kontrolü
-        if (!supportedFormats.includes(file.type)) {
-            errors.push(`Desteklenmeyen format: ${file.type}`);
+        if (!supportedFormats.includes(mimeType)) {
+            errors.push(`Desteklenmeyen format: ${mimeType || "bilinmiyor"}`);
         }
 
-        // Boyut kontrolü
-        if (file.size > maxFileSize) {
-            errors.push(`Dosya çok büyük: ${(file.size / 1024 / 1024).toFixed(1)}MB (Max: 10MB)`);
+        const isVideo = (mimeType || "").startsWith("video/");
+        const limit = isVideo ? maxVideoFileSize : maxImageFileSize;
+        if (file.size > limit) {
+            errors.push(
+                `Dosya çok büyük: ${(file.size / 1024 / 1024).toFixed(1)}MB (Max: ${limit / 1024 / 1024
+                }MB)`
+            );
         }
-
         return errors;
     };
 
-    // Dosya boyutunu okunabilir formata çevir
     const formatFileSize = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0) return "0 Bytes";
         const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const sizes = ["Bytes", "KB", "MB", "GB"];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
-    const handlePhotoUpload = async (e) => {
+    const getMimeFromExtension = (name) => {
+        const ext = name.split(".").pop()?.toLowerCase();
+        switch (ext) {
+            case "heic":
+            case "heif":
+                return "image/heic";
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "png":
+                return "image/png";
+            case "webp":
+                return "image/webp";
+            case "gif":
+                return "image/gif";
+            case "tiff":
+            case "tif":
+                return "image/tiff";
+            case "bmp":
+                return "image/bmp";
+            case "mp4":
+                return "video/mp4";
+            case "mov":
+                return "video/quicktime";
+            default:
+                return "";
+        }
+    };
+
+    // Fotoğraf seçimi
+    const handlePhotoSelect = (e) => {
         const files = Array.from(e.target.files);
 
-        // Dosya sayısı kontrolü
-        if (files.length > maxFiles) {
-            showToast(`Tek seferde maksimum ${maxFiles} dosya yükleyebilirsiniz`, 'error');
+        if (files.length + selectedFiles.length > maxFiles) {
+            showToast(
+                `Tek seferde maksimum ${maxFiles} dosya seçebilirsiniz`,
+                "error"
+            );
             e.target.value = "";
             return;
         }
 
-        // Her dosyayı validate et
         const validFiles = [];
         const invalidFiles = [];
 
-        files.forEach(file => {
+        files.forEach((file) => {
             const errors = validateFile(file);
-            if (errors.length === 0) {
-                validFiles.push(file);
-            } else {
-                invalidFiles.push({ file, errors });
-            }
+            if (errors.length === 0) validFiles.push(file);
+            else invalidFiles.push({ file, errors });
         });
 
-        // Geçersiz dosyalar için hata mesajları
-        invalidFiles.forEach(({ file, errors }) => {
-            showToast(`${file.name}: ${errors.join(', ')}`, 'error');
-        });
+        invalidFiles.forEach(({ file, errors }) =>
+            showToast(`${file.name}: ${errors.join(", ")}`, "error")
+        );
 
-        if (validFiles.length === 0) {
-            e.target.value = "";
+        if (validFiles.length > 0)
+            setSelectedFiles((prev) => [...prev, ...validFiles]);
+
+        e.target.value = "";
+    };
+
+    // Seçilen fotoğrafı silme
+    const removeSelectedFile = (index) => {
+        const removedFile = selectedFiles[index];
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+        showToast(`${removedFile.name} kaldırıldı`, "info");
+    };
+
+    // Gönder butonu
+    const handleSendPhotos = async () => {
+        if (selectedFiles.length === 0) {
+            showToast("Gönderecek fotoğraf yok", "error");
             return;
         }
 
         setUploading(true);
         let successCount = 0;
 
-        for (const file of validFiles) {
+        for (const file of selectedFiles) {
             try {
-                // Backend'e yükleme
-                const response = await fetch("http://localhost:5678/webhook/upload-photo", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": file.type,
-                        "username": userName,
-                        "file-size": file.size.toString(),
-                        "file-name": encodeURIComponent(file.name),
-                    },
-                    body: file,
-                });
+                const formData = new FormData();
+                formData.append("file", file, file.name);
+                formData.append("username", userName);
+                formData.append("fileSize", String(file.size));
+                formData.append("fileName", file.name);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const response = await fetch(
+                    "http://localhost:5678/webhook/upload-photo",
+                    { method: "POST", body: formData }
+                );
+
+                // JSON parse edilemiyorsa bile hata gösterme
+                try {
+                    const result = await response.json();
+                    console.log("Backend yanıtı:", result);
+                } catch (e) {
+                    console.log("JSON yanıtı yok ama yükleme tamamlanmış olabilir");
                 }
 
-                const result = await response.json();
-                console.log("Backend yanıtı:", result);
+                // Frontend listesine ekleme
+                const mimeType =
+                    file.type ||
+                    getMimeFromExtension(file.name) ||
+                    "application/octet-stream";
+                const isVideo = mimeType.startsWith("video/");
 
-                // Frontend listesine ekle
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const newPhoto = {
+                if (isVideo) {
+                    const newItem = {
                         id: Date.now() + Math.random(),
-                        src: event.target.result,
+                        src: URL.createObjectURL(file),
                         name: file.name,
                         size: file.size,
-                        type: file.type,
+                        type: mimeType,
                         uploadedBy: userName,
-                        uploadTime: new Date().toLocaleString('tr-TR'),
+                        uploadTime: new Date().toLocaleString("tr-TR"),
+                        isVideo: true,
                     };
-                    setUploadedPhotos(prev => [...prev, newPhoto]);
-                };
-                reader.readAsDataURL(file);
+                    setUploadedPhotos((prev) => [...prev, newItem]);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const newItem = {
+                            id: Date.now() + Math.random(),
+                            src: event.target.result,
+                            name: file.name,
+                            size: file.size,
+                            type: mimeType,
+                            uploadedBy: userName,
+                            uploadTime: new Date().toLocaleString("tr-TR"),
+                            isVideo: false,
+                        };
+                        setUploadedPhotos((prev) => [...prev, newItem]);
+                    };
+                    reader.readAsDataURL(file);
+                }
 
+                // Başarı sayısını artır
                 successCount++;
-
             } catch (err) {
+                // Sadece gerçek network/fetch hatalarında hata göster
                 console.error("Fotoğraf yüklenemedi:", err);
-                showToast(`${file.name}: Yükleme başarısız - ${err.message}`, 'error');
+                showToast(`${file.name}: Yükleme başarısız - ${err.message}`, "error");
             }
         }
 
-        // Başarılı yüklemeler için konfeti ve mesaj
+        // Konfeti ve mesaj
         if (successCount > 0) {
             setShowConfetti(true);
             setTimeout(() => setShowConfetti(false), 4000);
@@ -149,23 +272,24 @@ const WeddingPhotoApp = () => {
                 successCount === 1
                     ? `1 fotoğraf başarıyla yüklendi!`
                     : `${successCount} fotoğraf başarıyla yüklendi!`,
-                'success'
+                "success"
             );
         }
 
+        setSelectedFiles([]); // Gönderilenleri temizle
         setUploading(false);
-        e.target.value = "";
     };
 
     const removePhoto = (photoId) => {
-        setUploadedPhotos(prev => prev.filter(photo => photo.id !== photoId));
-        showToast('Fotoğraf silindi', 'info');
+        setUploadedPhotos((prev) => prev.filter((photo) => photo.id !== photoId));
+        showToast("Fotoğraf silindi", "info");
     };
 
     const logout = () => {
         setIsLoggedIn(false);
-        setUserName('');
+        setUserName("");
         setUploadedPhotos([]);
+        setSelectedFiles([]);
         setToasts([]);
     };
 
@@ -219,28 +343,23 @@ const WeddingPhotoApp = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-purple-100 relative">
-            {/* Konfeti */}
-            {showConfetti && (
-                <div className="fixed inset-0 pointer-events-none z-50">
-                    <div className="animate-pulse">🎉</div>
-                </div>
-            )}
+            <Confetti show={showConfetti} />
 
             {/* Toast Container */}
             <div className="fixed top-4 right-4 z-50 space-y-2">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg max-w-sm flex items-center space-x-2 animate-slide-in ${toast.type === 'success'
-                            ? 'bg-green-500 text-white'
-                            : toast.type === 'error'
-                                ? 'bg-red-500 text-white'
-                                : 'bg-blue-500 text-white'
+                        className={`px-4 py-3 rounded-lg shadow-lg max-w-sm flex items-center space-x-2 animate-slide-in ${toast.type === "success"
+                                ? "bg-green-500 text-white"
+                                : toast.type === "error"
+                                    ? "bg-red-500 text-white"
+                                    : "bg-blue-500 text-white"
                             }`}
                     >
-                        {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-                        {toast.type === 'error' && <AlertCircle className="w-5 h-5" />}
-                        {toast.type === 'info' && <Info className="w-5 h-5" />}
+                        {toast.type === "success" && <CheckCircle className="w-5 h-5" />}
+                        {toast.type === "error" && <AlertCircle className="w-5 h-5" />}
+                        {toast.type === "info" && <Info className="w-5 h-5" />}
                         <span className="text-sm">{toast.message}</span>
                     </div>
                 ))}
@@ -273,34 +392,72 @@ const WeddingPhotoApp = () => {
                     <div className="border-2 border-dashed border-rose-300 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 text-center hover:border-rose-400 transition-colors">
                         <Camera className="mx-auto text-rose-500 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mb-3 sm:mb-4" />
                         <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                            Fotoğraf Yükle
+                            Fotoğraf Seç
                         </h3>
                         <p className="text-sm sm:text-base text-gray-600 mb-4 px-2">
-                            JPEG, PNG, WebP formatlarında, maksimum 10MB
+                            Fotoğraf: JPEG, PNG, WebP, HEIC (max 10MB) • Video: MP4/MOV (max
+                            200MB)
                         </p>
 
                         {/* Format bilgileri */}
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                             <div className="text-xs sm:text-sm text-blue-700">
-                                <strong>Desteklenen formatlar:</strong> JPEG, JPG, PNG, WebP, HEIC<br />
-                                <strong>Maksimum boyut:</strong> 10MB<br />
+                                <strong>Desteklenen formatlar:</strong> JPEG, JPG, PNG, WebP,
+                                HEIC, MP4, MOV
+                                <br />
+                                <strong>Maksimum boyut:</strong> Fotoğraf 10MB, Video 200MB
+                                <br />
                                 <strong>Tek seferde:</strong> Maksimum {maxFiles} dosya
                             </div>
                         </div>
 
-                        <label className={`inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-lg font-semibold hover:from-rose-600 hover:to-pink-600 transition-all transform hover:scale-105 cursor-pointer text-sm sm:text-base ${uploading ? 'opacity-50 pointer-events-none' : ''
-                            }`}>
+                        <label
+                            className={`inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-lg font-semibold hover:from-rose-600 hover:to-pink-600 transition-all transform hover:scale-105 cursor-pointer text-sm sm:text-base ${uploading ? "opacity-50 pointer-events-none" : ""
+                                }`}
+                        >
                             <Upload className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                            {uploading ? 'Yükleniyor...' : 'Fotoğraf Seç'}
+                            Fotoğraf Seç
                             <input
                                 type="file"
                                 multiple
-                                accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"
-                                onChange={handlePhotoUpload}
+                                accept="image/*,.heic,.heif,video/mp4,video/quicktime,.mp4,.mov"
+                                onChange={handlePhotoSelect}
                                 disabled={uploading}
                                 className="hidden"
                             />
                         </label>
+
+                        {/* Seçilen dosyalar listesi */}
+                        {selectedFiles.length > 0 && (
+                            <div className="mt-4 text-left">
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                    Seçilen Dosyalar ({selectedFiles.length})
+                                </h4>
+                                <ul className="space-y-2">
+                                    {selectedFiles.map((file, index) => (
+                                        <li
+                                            key={index}
+                                            className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm"
+                                        >
+                                            <span className="truncate">{file.name}</span>
+                                            <button
+                                                onClick={() => removeSelectedFile(index)}
+                                                className="text-gray-400 hover:text-red-500"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button
+                                    onClick={handleSendPhotos}
+                                    disabled={uploading}
+                                    className="mt-3 w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold transition-all"
+                                >
+                                    {uploading ? "Yükleniyor..." : "Gönder"}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -313,13 +470,24 @@ const WeddingPhotoApp = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {uploadedPhotos.map((photo) => (
-                                <div key={photo.id} className="bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                <div
+                                    key={photo.id}
+                                    className="bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                                >
                                     <div className="aspect-square bg-gray-200 overflow-hidden">
-                                        <img
-                                            src={photo.src}
-                                            alt={photo.name}
-                                            className="w-full h-full object-cover hover:scale-105 transition-transform"
-                                        />
+                                        {photo.isVideo ? (
+                                            <video
+                                                src={photo.src}
+                                                controls
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <img
+                                                src={photo.src}
+                                                alt={photo.name}
+                                                className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                            />
+                                        )}
                                     </div>
                                     <div className="p-3">
                                         <div className="flex justify-between items-start mb-2">
@@ -337,7 +505,9 @@ const WeddingPhotoApp = () => {
                                             <div>{formatFileSize(photo.size)}</div>
                                             <div>{photo.uploadTime}</div>
                                             <div className="bg-gray-200 px-2 py-1 rounded text-xs">
-                                                {photo.type.split('/')[1].toUpperCase()}
+                                                {photo.type && photo.type.includes("/")
+                                                    ? photo.type.split("/")[1].toUpperCase()
+                                                    : photo.type || "DOSYA"}
                                             </div>
                                         </div>
                                     </div>
@@ -348,7 +518,7 @@ const WeddingPhotoApp = () => {
                 )}
 
                 {/* Boş durum */}
-                {uploadedPhotos.length === 0 && (
+                {uploadedPhotos.length === 0 && selectedFiles.length === 0 && (
                     <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-8 text-center">
                         <div className="text-gray-400 mb-4">
                             <Camera className="w-16 h-16 mx-auto mb-4" />
@@ -361,21 +531,21 @@ const WeddingPhotoApp = () => {
 
             {/* CSS Animasyonları */}
             <style jsx>{`
-                @keyframes slide-in {
-                    from {
-                        transform: translateX(100%);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
-                }
-                
-                .animate-slide-in {
-                    animation: slide-in 0.3s ease-out;
-                }
-            `}</style>
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
         </div>
     );
 };
