@@ -4,13 +4,13 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import CreateEvent from "./pages/CreateEvent";
 import EventPage from "./pages/EventPage";
+import Skelet from "./components/skelet";
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/create-event" element={<CreateEvent />} />
+        <Route path="/" element={<CreateEvent />} />
         <Route path="/event/:eventId" element={<EventPage />} />
         <Route path="/wedding-photos" element={<WeddingPhotoApp />} />
       </Routes>

@@ -2,7 +2,8 @@ export default function ThemeSelector({ selected, onChange }) {
     const themes = [
         { id: "classic", name: "Klasik" },
         { id: "romantic", name: "Romantik" },
-        { id: "modern", name: "Modern" },
+        { id: "dark", name: "Karanlık" },
+        { id: "vibrant", name: "Canlı" },
     ];
 
     return (

@@ -1,5 +1,12 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import {
+  romanticTheme,
+  classicTheme,
+  darkTheme,
+  vibrantTheme,
+} from "../themes";
+import Skelet from "../components/skelet";
 
 export default function EventPage() {
   const { eventId } = useParams();
@@ -30,19 +37,18 @@ export default function EventPage() {
   const { names, date, theme } = eventData;
 
   const themeStyles = {
-    classic: "bg-pink-50 text-pink-700",
-    modern: "bg-blue-50 text-blue-700",
-    romantic: "bg-red-50 text-red-700",
+    romantic: romanticTheme,
+    classic: classicTheme,
+    dark: darkTheme,
+    vibrant: vibrantTheme,
   };
 
+  const currentTheme = themeStyles[theme] || classicTheme;
+
   return (
-    <div className={`min-h-screen p-6 ${themeStyles[theme] || ""}`}>
-      <div className="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold mb-4 text-center">{names} 🎉</h1>
-        <h2 className="text-xl mb-2">Tarih: {date}</h2>
-        <h3 className="text-lg mb-4">Tema: {theme}</h3>
-        <p>Buraya galeri veya diğer düğün detayları gelecek...</p>
-      </div>
+    <div className={`min-h-screen transition-colors duration-500 ${currentTheme.background}`}>
+      {/* Skelet yapısı */}
+      <Skelet theme={currentTheme} />
     </div>
   );
 }

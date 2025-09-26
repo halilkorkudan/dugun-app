@@ -34,7 +34,7 @@ export default function CreateEvent() {
 
     return (
         <div className="p-6 max-w-lg mx-auto mt-12 bg-white shadow-lg rounded-lg">
-            <h1 className="text-3xl font-bold mb-6 text-center text-pink-600">Düğününü Oluştur 🎉</h1>
+            <h1 className="text-3xl font-bold mb-6 text-center text-pink-600">Düğününü oluşturalım <br /> merhaba🎉</h1>
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <input
                     type="text"
